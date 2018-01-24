@@ -1,77 +1,44 @@
-import { TestBed, fakeAsync, inject, tick } from '@angular/core/testing';
-import { MockBackend, MockConnection } from '@angular/http/testing';
-import { BaseRequestOptions, Http, Response, ResponseOptions } from '@angular/http';
+import { TestBed } from '@angular/core/testing';
 
 import { QuoteService } from './quote.service';
+import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 
 describe('QuoteService', () => {
   let quoteService: QuoteService;
-  let mockBackend: MockBackend;
+  let httpMock: HttpTestingController;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
+      imports: [
+        HttpClientTestingModule
+      ],
       providers: [
-        QuoteService,
-        MockBackend,
-        BaseRequestOptions,
-        {
-          provide: Http,
-          useFactory: (backend: MockBackend, defaultOptions: BaseRequestOptions) => {
-            return new Http(backend, defaultOptions);
-          },
-          deps: [MockBackend, BaseRequestOptions]
-        }
+        QuoteService
       ]
     });
-  });
 
-  beforeEach(inject([
-    QuoteService,
-    MockBackend
-  ], (_quoteService: QuoteService,
-      _mockBackend: MockBackend) => {
-
-    quoteService = _quoteService;
-    mockBackend = _mockBackend;
-  }));
-
-  afterEach(() => {
-    mockBackend.verifyNoPendingRequests();
+    quoteService = TestBed.get(QuoteService);
+    httpMock = TestBed.get(HttpTestingController);
   });
 
   describe('getRandomQuote', () => {
-    it('should return a random Chuck Norris quote', fakeAsync(() => {
-      // Arrange
-      const mockQuote = 'a random quote';
-      const response = new Response(new ResponseOptions({
-        body: { value: mockQuote }
-      }));
-      mockBackend.connections.subscribe((connection: MockConnection) => connection.mockRespond(response));
+    it('should return a random Chuck Norris quote', (done: DoneFn) => {
+      quoteService.getRandomQuote({ category: 'dev' })
+        .subscribe(res => {
+          expect(res).toBe('Chuck Norris doesn\'t pair program.');
+          done();
+        });
 
-      // Act
-      const randomQuoteSubscription = quoteService.getRandomQuote({ category: 'toto' });
-      tick();
+      const req = httpMock.expectOne('https://api.chucknorris.io/jokes/random?category=dev');
 
-      // Assert
-      randomQuoteSubscription.subscribe((quote: string) => {
-        expect(quote).toEqual(mockQuote);
+      req.flush({
+        icon_url: 'https://assets.chucknorris.host/img/avatar/chuck-norris.png',
+        id: '2aDeXc2WR_uo7gfgFKfYBA',
+        url: 'https://api.chucknorris.io/jokes/2aDeXc2WR_uo7gfgFKfYBA',
+        value: 'Chuck Norris doesn\'t pair program.'
       });
-    }));
-
-    it('should return a string in case of error', fakeAsync(() => {
-      // Arrange
-      const response = new Response(new ResponseOptions({ status: 500 }));
-      mockBackend.connections.subscribe((connection: MockConnection) => connection.mockError(response as any));
-
-      // Act
-      const randomQuoteSubscription = quoteService.getRandomQuote({ category: 'toto' });
-      tick();
-
-      // Assert
-      randomQuoteSubscription.subscribe((quote: string) => {
-        expect(typeof quote).toEqual('string');
-        expect(quote).toContain('Error');
-      });
-    }));
+      httpMock.verify();
+    });
   });
+
 });

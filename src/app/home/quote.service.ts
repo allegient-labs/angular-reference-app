@@ -1,11 +1,11 @@
 import { Injectable } from '@angular/core';
-import { Http, Response } from '@angular/http';
 import { Observable } from 'rxjs/Observable';
 import { of } from 'rxjs/observable/of';
+import { HttpClient } from '@angular/common/http';
 import { map, catchError } from 'rxjs/operators';
 
 const routes = {
-  quote: (c: RandomQuoteContext) => `/jokes/random?category=${c.category}`
+  quote: (c: RandomQuoteContext) => `https://api.chucknorris.io/jokes/random?category=${c.category}`
 };
 
 export interface RandomQuoteContext {
@@ -13,18 +13,23 @@ export interface RandomQuoteContext {
   category: string;
 }
 
+export interface ChuckNorrisResponse {
+  icon_url: string;
+  id: string;
+  url: string;
+  value: string;
+}
+
 @Injectable()
 export class QuoteService {
 
-  constructor(private http: Http) { }
+  constructor(private http: HttpClient) { }
 
   getRandomQuote(context: RandomQuoteContext): Observable<string> {
-    return this.http.get(routes.quote(context), { cache: true })
+    return this.http.get<ChuckNorrisResponse>(routes.quote(context))
       .pipe(
-        map((res: Response) => res.json()),
-        map(body => body.value),
+        map(res => res.value),
         catchError(() => of('Error, could not load joke :-('))
       );
   }
-
 }
